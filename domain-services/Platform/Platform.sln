@@ -5,6 +5,10 @@ VisualStudioVersion = 17.1.32421.90
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Platform.IntegrationEventLogEF", "Platform.IntegrationEventLogEF\Platform.IntegrationEventLogEF.csproj", "{82D3042F-B3B0-46B5-9912-806B64F4B5D9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Platform.EventBus", "Platform.EventBus\Platform.EventBus.csproj", "{6D263963-3313-48C8-BE19-829FCA612F73}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Platform.EventBusServiceBus", "Platform.EventBusServiceBus\Platform.EventBusServiceBus.csproj", "{E72C705F-AE56-4CCD-A16C-0C77B62D598E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{82D3042F-B3B0-46B5-9912-806B64F4B5D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{82D3042F-B3B0-46B5-9912-806B64F4B5D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{82D3042F-B3B0-46B5-9912-806B64F4B5D9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6D263963-3313-48C8-BE19-829FCA612F73}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6D263963-3313-48C8-BE19-829FCA612F73}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6D263963-3313-48C8-BE19-829FCA612F73}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6D263963-3313-48C8-BE19-829FCA612F73}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E72C705F-AE56-4CCD-A16C-0C77B62D598E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E72C705F-AE56-4CCD-A16C-0C77B62D598E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E72C705F-AE56-4CCD-A16C-0C77B62D598E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E72C705F-AE56-4CCD-A16C-0C77B62D598E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
