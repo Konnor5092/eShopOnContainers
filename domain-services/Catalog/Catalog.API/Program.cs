@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Catalog.API
 {
-    public class Program
+    public partial class Program
     {
         public static void Main(string[] args)
         {
@@ -22,5 +22,11 @@ namespace Catalog.API
                 {
                     webBuilder.UseStartup<Startup>();
                 });
+    }
+    
+    public partial class Program
+    {
+        public static readonly string Namespace = typeof(Startup).Namespace;
+        public static readonly string AppName = Namespace.Substring(Namespace.LastIndexOf('.', Namespace.LastIndexOf('.') - 1) + 1);
     }
 }

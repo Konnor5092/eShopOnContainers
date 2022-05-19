@@ -5,12 +5,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.4" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.4">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.5">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Polly" Version="7.2.3" />
+    <PackageReference Include="Serilog" Version="2.11.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="5.6.3" />
   </ItemGroup>
 
@@ -18,4 +19,8 @@
     <Folder Include="IntegrationEvents\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\Platform\Platform.EventBus\Platform.EventBus.csproj" />
+    <ProjectReference Include="..\..\Platform\Platform.IntegrationEventLogEF\Platform.IntegrationEventLogEF.csproj" />
+  </ItemGroup>
 </Project>
