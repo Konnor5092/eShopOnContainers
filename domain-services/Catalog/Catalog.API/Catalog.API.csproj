@@ -5,6 +5,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.20.1" />
+    <PackageReference Include="Grpc.AspNetCore.Server" Version="2.46.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.46.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.5" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.5">
       <PrivateAssets>all</PrivateAssets>
@@ -22,5 +28,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Platform\Platform.EventBus\Platform.EventBus.csproj" />
     <ProjectReference Include="..\..\Platform\Platform.IntegrationEventLogEF\Platform.IntegrationEventLogEF.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Proto\catalog.proto" GrpcServices="Server" />
   </ItemGroup>
 </Project>

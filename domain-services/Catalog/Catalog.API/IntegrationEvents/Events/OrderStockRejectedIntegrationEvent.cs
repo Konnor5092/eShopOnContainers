@@ -9,8 +9,7 @@ public record OrderStockRejectedIntegrationEvent : IntegrationEvent
 
     public List<ConfirmedOrderStockItem> OrderStockItems { get; }
 
-    public OrderStockRejectedIntegrationEvent(int orderId,
-        List<ConfirmedOrderStockItem> orderStockItems)
+    public OrderStockRejectedIntegrationEvent(int orderId, List<ConfirmedOrderStockItem> orderStockItems)
     {
         OrderId = orderId;
         OrderStockItems = orderStockItems;
