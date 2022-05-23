@@ -10,13 +10,24 @@ using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Autofac;
 using Catalog.API;
 using Catalog.API.Infrastructure.Filters;
+using Catalog.API.IntegrationEvents;
+using Catalog.API.IntegrationEvents.EventHandling;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
+using Platform.EventBus;
+using Platform.EventBus.Abstractions;
+using Platform.EventBusServiceBus;
 using Platform.IntegrationEventLogEF;
+using Platform.IntegrationEventLogEF.Services;
 
 namespace Catalog.API
 {
@@ -34,7 +45,14 @@ namespace Catalog.API
         {
             services.AddGrpc().Services
                 .AddCustomMVC(Configuration)
-                .AddCustomDbContext(Configuration);
+                .AddCustomDbContext(Configuration)
+                .AddCustomOptions(Configuration)
+                .AddSwagger(Configuration)
+                .AddIntegrationServices(Configuration)
+                .AddEventBus(Configuration)
+                .AddCustomHealthCheck(Configuration);
+
+            services.AddHealthChecks();
             
             services.AddDbContext<CatalogContext>();
             services.AddControllers();
@@ -114,6 +132,128 @@ public static class CustomExtensionMethods
                     sqlOptions.EnableRetryOnFailure(maxRetryCount: 15, maxRetryDelay: TimeSpan.FromSeconds(30), errorNumbersToAdd: null);
                 });
         });
+
+        return services;
+    }
+    
+    public static IServiceCollection AddCustomOptions(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<CatalogSettings>(configuration);
+        services.Configure<ApiBehaviorOptions>(options =>
+        {
+            options.InvalidModelStateResponseFactory = context =>
+            {
+                var problemDetails = new ValidationProblemDetails(context.ModelState)
+                {
+                    Instance = context.HttpContext.Request.Path,
+                    Status = StatusCodes.Status400BadRequest,
+                    Detail = "Please refer to the errors property for additional details."
+                };
+
+                return new BadRequestObjectResult(problemDetails)
+                {
+                    ContentTypes = { "application/problem+json", "application/problem+xml" }
+                };
+            };
+        });
+
+        return services;
+    }
+    
+    public static IServiceCollection AddSwagger(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddSwaggerGen(options =>
+        {            
+            options.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title = "Catalog HTTP API",
+                Version = "v1",
+                Description = "The Catalog Microservice HTTP API. This is a Data-Driven/CRUD microservice sample"
+            });
+        });
+
+        return services;
+    }
+
+    public static IServiceCollection AddIntegrationServices(this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddTransient<Func<DbConnection, IIntegrationEventLogService>>(
+            sp => (DbConnection c) => new IntegrationEventLogService(c));
+
+        services.AddTransient<ICatalogIntegrationEventService, CatalogIntegrationEventService>();
+
+        if (configuration.GetValue<bool>("AzureServiceBusEnabled"))
+        {
+            services.AddSingleton<IServiceBusPersisterConnection>(sp =>
+            {
+                var settings = sp.GetRequiredService<IOptions<CatalogSettings>>().Value;
+                var serviceBusConnection = settings.EventBusConnection;
+
+                return new DefaultServiceBusPersisterConnection(serviceBusConnection);
+            });
+        }
+        
+        return services;
+    }
+    
+    public static IServiceCollection AddEventBus(this IServiceCollection services, IConfiguration configuration)
+    {
+        if (configuration.GetValue<bool>("AzureServiceBusEnabled"))
+        {
+            services.AddSingleton<IEventBus, EventBusServiceBus>(sp =>
+            {
+                var serviceBusPersisterConnection = sp.GetRequiredService<IServiceBusPersisterConnection>();
+                var iLifetimeScope = sp.GetRequiredService<ILifetimeScope>();
+                var logger = sp.GetRequiredService<ILogger<EventBusServiceBus>>();
+                var eventBusSubcriptionsManager = sp.GetRequiredService<IEventBusSubscriptionsManager>();
+                string subscriptionName = configuration["SubscriptionClientName"];
+
+                return new EventBusServiceBus(serviceBusPersisterConnection, logger,
+                    eventBusSubcriptionsManager, iLifetimeScope, subscriptionName);
+            });
+
+        }
+
+        services.AddSingleton<IEventBusSubscriptionsManager, InMemoryEventBusSubscriptionsManager>();
+        services.AddTransient<OrderStatusChangedToAwaitingValidationIntegrationEventHandler>();
+        services.AddTransient<OrderStatusChangedToPaidIntegrationEventHandler>();
+
+        return services;
+    }
+    
+    public static IServiceCollection AddCustomHealthCheck(this IServiceCollection services, IConfiguration configuration)
+    {
+        var accountName = configuration.GetValue<string>("AzureStorageAccountName");
+        var accountKey = configuration.GetValue<string>("AzureStorageAccountKey");
+
+        var hcBuilder = services.AddHealthChecks();
+
+        hcBuilder
+            .AddCheck("self", () => HealthCheckResult.Healthy())
+            .AddSqlServer(
+                configuration["ConnectionString"],
+                name: "CatalogDB-check",
+                tags: new string[] { "catalogdb" });
+
+        if (!string.IsNullOrEmpty(accountName) && !string.IsNullOrEmpty(accountKey))
+        {
+            hcBuilder
+                .AddAzureBlobStorage(
+                    $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net",
+                    name: "catalog-storage-check",
+                    tags: new string[] { "catalogstorage" });
+        }
+
+        if (configuration.GetValue<bool>("AzureServiceBusEnabled"))
+        {
+            hcBuilder
+                .AddAzureServiceBusTopic(
+                    configuration["EventBusConnection"],
+                    topicName: "eshop_event_bus",
+                    name: "catalog-servicebus-check",
+                    tags: new string[] { "servicebus" });
+        }
 
         return services;
     }
