@@ -44,7 +44,7 @@ namespace Catalog.API
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddGrpc().Services
-                .AddCustomMVC(Configuration)
+                .AddCustomMvc(Configuration)
                 .AddCustomDbContext(Configuration)
                 .AddCustomOptions(Configuration)
                 .AddSwagger(Configuration)
@@ -88,7 +88,7 @@ namespace Catalog.API
 
 public static class CustomExtensionMethods
 {
-    public static IServiceCollection AddCustomMVC(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddCustomMvc(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddControllers(options =>
             {
