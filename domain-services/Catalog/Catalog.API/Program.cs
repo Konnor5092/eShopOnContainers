@@ -6,6 +6,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Catalog.API.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Platform.IntegrationEventLogEF;
 
 namespace Catalog.API
 {
@@ -13,7 +17,18 @@ namespace Catalog.API
     {
         public static void Main(string[] args)
         {
-            CreateHostBuilder(args).Build().Run();
+            var host = CreateHostBuilder(args).Build();
+
+            using (var scope = host.Services.CreateScope())
+            {
+                var catalogContext = scope.ServiceProvider.GetRequiredService<CatalogContext>();
+                var integrationEventLogContext = scope.ServiceProvider.GetRequiredService<IntegrationEventLogContext>();
+                
+                catalogContext.Database.Migrate();
+                integrationEventLogContext.Database.Migrate();
+            }
+
+            host.Run();
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
