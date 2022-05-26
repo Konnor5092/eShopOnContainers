@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Catalog.API.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Platform.IntegrationEventLogEF;
 
 namespace Catalog.API
@@ -23,9 +24,18 @@ namespace Catalog.API
             {
                 var catalogContext = scope.ServiceProvider.GetRequiredService<CatalogContext>();
                 var integrationEventLogContext = scope.ServiceProvider.GetRequiredService<IntegrationEventLogContext>();
+                var settings = scope.ServiceProvider.GetService<IOptions<CatalogSettings>>();
+                var env = scope.ServiceProvider.GetService<IWebHostEnvironment>();
+                var logger = scope.ServiceProvider.GetService<ILogger<CatalogContextSeed>>();
+
+                if (catalogContext.Database.GetPendingMigrations().Any() &&
+                    integrationEventLogContext.Database.GetPendingMigrations().Any())
+                {
+                    catalogContext.Database.Migrate();
+                    integrationEventLogContext.Database.Migrate();
+                }
                 
-                catalogContext.Database.Migrate();
-                integrationEventLogContext.Database.Migrate();
+                new CatalogContextSeed().SeedAsync(catalogContext, env, settings, logger).Wait();
             }
 
             host.Run();

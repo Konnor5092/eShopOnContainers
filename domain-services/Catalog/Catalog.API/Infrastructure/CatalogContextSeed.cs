@@ -34,8 +34,10 @@ public class CatalogContextSeed
                 await context.CatalogBrands.AddRangeAsync(useCustomizationData
                     ? GetCatalogBrandsFromFile(contentRootPath, logger)
                     : GetPreconfiguredCatalogBrands());
-
+                
                 await context.SaveChangesAsync();
+                
+                logger.LogInformation("CatalogBrands seeding complete");
             }
 
             if (!context.CatalogTypes.Any())
@@ -45,6 +47,8 @@ public class CatalogContextSeed
                     : GetPreconfiguredCatalogTypes());
 
                 await context.SaveChangesAsync();
+                
+                logger.LogInformation("CatalogTypes seeding complete");
             }
 
             if (!context.CatalogItems.Any())
@@ -54,6 +58,8 @@ public class CatalogContextSeed
                     : GetPreconfiguredItems());
 
                 await context.SaveChangesAsync();
+                
+                logger.LogInformation("CatalogItems seeding complete");
 
                 GetCatalogItemPictures(contentRootPath, picturePath);
             }
