@@ -19,7 +19,7 @@ public class EventBusServiceBus : IEventBus, IDisposable
     private readonly string _topicName = "eshop_event_bus";
     private readonly string _subscriptionName;
     private ServiceBusSender _sender;
-    private ServiceBusProcessor _processor;
+    //private ServiceBusProcessor _processor;
     private readonly string AUTOFAC_SCOPE_NAME = "eshop_event_bus";
     private const string INTEGRATION_EVENT_SUFFIX = "IntegrationEvent";
 
@@ -28,15 +28,15 @@ public class EventBusServiceBus : IEventBus, IDisposable
     {
         _serviceBusPersisterConnection = serviceBusPersisterConnection;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _subsManager = subsManager ?? new InMemoryEventBusSubscriptionsManager();
+        _subsManager = null; //subsManager ?? new InMemoryEventBusSubscriptionsManager();
         _autofac = autofac;
         _subscriptionName = subscriptionClientName;
         _sender = _serviceBusPersisterConnection.TopicClient.CreateSender(_topicName);
         ServiceBusProcessorOptions options = new ServiceBusProcessorOptions { MaxConcurrentCalls = 10, AutoCompleteMessages = false };
-        _processor = _serviceBusPersisterConnection.TopicClient.CreateProcessor(_topicName, _subscriptionName, options);
+        //_processor = _serviceBusPersisterConnection.TopicClient.CreateProcessor(_topicName, _subscriptionName, options);
 
-        RemoveDefaultRule();
-        RegisterSubscriptionClientMessageHandlerAsync().GetAwaiter().GetResult();
+        //RemoveDefaultRule();
+        //RegisterSubscriptionClientMessageHandlerAsync().GetAwaiter().GetResult();
     }
 
     public void Publish(IntegrationEvent @event)
@@ -127,27 +127,27 @@ public class EventBusServiceBus : IEventBus, IDisposable
 
     private async Task RegisterSubscriptionClientMessageHandlerAsync()
     {
-        _processor.ProcessMessageAsync +=
-            async (args) =>
-            {
-                var eventName = $"{args.Message.Subject}{INTEGRATION_EVENT_SUFFIX}";
-                string messageData = args.Message.Body.ToString();
-
-                // Complete the message so that it is not received again.
-                if (await ProcessEvent(eventName, messageData))
-                {
-                    await args.CompleteMessageAsync(args.Message);
-                }
-            };
-
-        _processor.ProcessErrorAsync += ErrorHandler;
-        await _processor.StartProcessingAsync();
+        // _processor.ProcessMessageAsync +=
+        //     async (args) =>
+        //     {
+        //         var eventName = $"{args.Message.Subject}{INTEGRATION_EVENT_SUFFIX}";
+        //         string messageData = args.Message.Body.ToString();
+        //
+        //         // Complete the message so that it is not received again.
+        //         if (await ProcessEvent(eventName, messageData))
+        //         {
+        //             await args.CompleteMessageAsync(args.Message);
+        //         }
+        //     };
+        //
+        // _processor.ProcessErrorAsync += ErrorHandler;
+        // await _processor.StartProcessingAsync();
     }
 
     public void Dispose()
     {
-        _subsManager.Clear();
-        _processor.CloseAsync().GetAwaiter().GetResult();
+        // _subsManager.Clear();
+        // _processor.CloseAsync().GetAwaiter().GetResult();
     }
 
     private Task ErrorHandler(ProcessErrorEventArgs args)

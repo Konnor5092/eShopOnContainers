@@ -11,14 +11,21 @@ using Microsoft.OpenApi.Models;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Autofac;
+using Azure.Messaging.ServiceBus;
 using Catalog.API;
+using Catalog.API.Grpc;
 using Catalog.API.Infrastructure.Filters;
 using Catalog.API.IntegrationEvents;
 using Catalog.API.IntegrationEvents.EventHandling;
+using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -56,10 +63,7 @@ namespace Catalog.API
             
             services.AddDbContext<CatalogContext>();
             services.AddControllers();
-            services.AddSwaggerGen(c =>
-            {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Catalog.API", Version = "v1" });
-            });
+            services.AddOptions();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -75,12 +79,36 @@ namespace Catalog.API
             app.UseHttpsRedirection();
 
             app.UseRouting();
-
-            app.UseAuthorization();
+            app.UseCors("CorsPolicy");
 
             app.UseEndpoints(endpoints =>
             {
+                endpoints.MapDefaultControllerRoute();
                 endpoints.MapControllers();
+                endpoints.MapGet("/_proto/", async ctx =>
+                {
+                    ctx.Response.ContentType = "text/plain";
+                    using var fs = new FileStream(Path.Combine(env.ContentRootPath, "Proto", "catalog.proto"), FileMode.Open, FileAccess.Read);
+                    using var sr = new StreamReader(fs);
+                    while (!sr.EndOfStream)
+                    {
+                        var line = await sr.ReadLineAsync();
+                        if (line != "/* >>" || line != "<< */")
+                        {
+                            await ctx.Response.WriteAsync(line);
+                        }
+                    }
+                });
+                endpoints.MapGrpcService<CatalogService>();
+                endpoints.MapHealthChecks("/hc", new HealthCheckOptions()
+                {
+                    Predicate = _ => true,
+                    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+                });
+                endpoints.MapHealthChecks("/liveness", new HealthCheckOptions
+                {
+                    Predicate = r => r.Name.Contains("self")
+                });
             });
         }
     }
@@ -204,18 +232,18 @@ public static class CustomExtensionMethods
             services.AddSingleton<IEventBus, EventBusServiceBus>(sp =>
             {
                 var serviceBusPersisterConnection = sp.GetRequiredService<IServiceBusPersisterConnection>();
-                var iLifetimeScope = sp.GetRequiredService<ILifetimeScope>();
                 var logger = sp.GetRequiredService<ILogger<EventBusServiceBus>>();
-                var eventBusSubcriptionsManager = sp.GetRequiredService<IEventBusSubscriptionsManager>();
+                var iLifetimeScope = sp.GetRequiredService<ILifetimeScope>();
+                //var eventBusSubcriptionsManager = sp.GetRequiredService<IEventBusSubscriptionsManager>();
                 string subscriptionName = configuration["SubscriptionClientName"];
 
                 return new EventBusServiceBus(serviceBusPersisterConnection, logger,
-                    eventBusSubcriptionsManager, iLifetimeScope, subscriptionName);
+                    null, iLifetimeScope, subscriptionName);
             });
 
         }
 
-        services.AddSingleton<IEventBusSubscriptionsManager, InMemoryEventBusSubscriptionsManager>();
+        //services.AddSingleton<IEventBusSubscriptionsManager, InMemoryEventBusSubscriptionsManager>();
         services.AddTransient<OrderStatusChangedToAwaitingValidationIntegrationEventHandler>();
         services.AddTransient<OrderStatusChangedToPaidIntegrationEventHandler>();
 
@@ -236,24 +264,24 @@ public static class CustomExtensionMethods
                 name: "CatalogDB-check",
                 tags: new string[] { "catalogdb" });
 
-        if (!string.IsNullOrEmpty(accountName) && !string.IsNullOrEmpty(accountKey))
-        {
-            hcBuilder
-                .AddAzureBlobStorage(
-                    $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net",
-                    name: "catalog-storage-check",
-                    tags: new string[] { "catalogstorage" });
-        }
+        // if (!string.IsNullOrEmpty(accountName) && !string.IsNullOrEmpty(accountKey))
+        // {
+        //     hcBuilder
+        //         .AddAzureBlobStorage(
+        //             $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net",
+        //             name: "catalog-storage-check",
+        //             tags: new string[] { "catalogstorage" });
+        // }
 
-        if (configuration.GetValue<bool>("AzureServiceBusEnabled"))
-        {
-            hcBuilder
-                .AddAzureServiceBusTopic(
-                    configuration["EventBusConnection"],
-                    topicName: "eshop_event_bus",
-                    name: "catalog-servicebus-check",
-                    tags: new string[] { "servicebus" });
-        }
+        // if (configuration.GetValue<bool>("AzureServiceBusEnabled"))
+        // {
+        //     hcBuilder
+        //         .AddAzureServiceBusTopic(
+        //             configuration["EventBusConnection"],
+        //             topicName: "eshop_event_bus",
+        //             name: "catalog-servicebus-check",
+        //             tags: new string[] { "servicebus" });
+        // }
 
         return services;
     }

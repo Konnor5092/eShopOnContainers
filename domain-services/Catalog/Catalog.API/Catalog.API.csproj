@@ -8,6 +8,8 @@
     <PackageReference Include="AspNetCore.HealthChecks.AzureServiceBus" Version="6.0.3" />
     <PackageReference Include="AspNetCore.HealthChecks.AzureStorage" Version="6.0.4" />
     <PackageReference Include="AspNetCore.HealthChecks.SqlServer" Version="6.0.2" />
+    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="6.0.4" />
+    <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="8.0.0" />
     <PackageReference Include="Google.Protobuf" Version="3.20.1" />
     <PackageReference Include="Grpc.AspNetCore.Server" Version="2.46.0" />
     <PackageReference Include="Grpc.Tools" Version="2.46.1">
