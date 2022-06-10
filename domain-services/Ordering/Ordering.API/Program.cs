@@ -1,4 +1,6 @@
 using System.Net;
+using Autofac;
+using Autofac.Extensions.DependencyInjection;
 using Azure.Core;
 using Azure.Identity;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -13,64 +15,86 @@ var configuration = GetConfiguration();
 
 Log.Logger = CreateSerilogLogger(configuration);
 
-try
-{
-    Log.Information("Configuring web host ({ApplicationContext})...", Program.AppName);
-    var host = BuildWebHost(configuration, args);
+var loggerFactory = new LoggerFactory()
+    .AddSerilog(CreateSerilogLogger(configuration));
 
-    Log.Information("Applying migrations ({ApplicationContext})...", Program.AppName);
-    // host.MigrateDbContext<OrderingContext>((context, services) =>
-    // {
-    //     var env = services.GetService<IWebHostEnvironment>();
-    //     var settings = services.GetService<IOptions<OrderingSettings>>();
-    //     var logger = services.GetService<ILogger<OrderingContextSeed>>();
-    //
-    //     new OrderingContextSeed()
-    //         .SeedAsync(context, env, settings, logger)
-    //         .Wait();
-    // })
-    // .MigrateDbContext<IntegrationEventLogContext>((_, __) => { });
+var builder = WebApplication.CreateBuilder(args);
 
-    Log.Information("Starting web host ({ApplicationContext})...", Program.AppName);
-    host.Build().Run();
+var startup = new Startup(builder.Configuration);
 
-    return 0;
-}
-catch (Exception ex)
-{
-    Log.Fatal(ex, "Program terminated unexpectedly ({ApplicationContext})!", Program.AppName);
-    return 1;
-}
-finally
-{
-    Log.CloseAndFlush();
-}
+startup.ConfigureServices(builder.Services);
 
-IHostBuilder BuildWebHost(IConfiguration configuration, string[] args) =>
-    Host.CreateDefaultBuilder(args).ConfigureWebHostDefaults(webBuilder =>
-        {
-            webBuilder
-                .CaptureStartupErrors(false)
-                .ConfigureKestrel(options =>
-                {
-                    var ports = GetDefinedPorts(configuration);
-                    options.Listen(IPAddress.Any, ports.httpPort, listenOptions =>
-                    {
-                        listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
-                    });
+// Using a custom DI container.
+builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
+builder.Host.ConfigureContainer<ContainerBuilder>(startup.ConfigureContainer);
 
-                    options.Listen(IPAddress.Any, ports.grpcPort, listenOptions =>
-                    {
-                        listenOptions.Protocols = HttpProtocols.Http2;
-                    });
+var app = builder.Build();
 
-                })
-                .ConfigureAppConfiguration(x => x.AddConfiguration(configuration))
-                .UseStartup<Startup>()
-                .UseContentRoot(Directory.GetCurrentDirectory())
-                .UseSerilog();
+startup.Configure(app, app.Environment, loggerFactory);
 
-        });
+app.Run();
+
+// try
+// {
+//     Log.Information("Configuring web host ({ApplicationContext})...", Program.AppName);
+//     var host = BuildWebHost(configuration, args);
+//
+//     Log.Information("Applying migrations ({ApplicationContext})...", Program.AppName);
+//     // host.MigrateDbContext<OrderingContext>((context, services) =>
+//     // {
+//     //     var env = services.GetService<IWebHostEnvironment>();
+//     //     var settings = services.GetService<IOptions<OrderingSettings>>();
+//     //     var logger = services.GetService<ILogger<OrderingContextSeed>>();
+//     //
+//     //     new OrderingContextSeed()
+//     //         .SeedAsync(context, env, settings, logger)
+//     //         .Wait();
+//     // })
+//     // .MigrateDbContext<IntegrationEventLogContext>((_, __) => { });
+//
+//     Log.Information("Starting web host ({ApplicationContext})...", Program.AppName);
+//     host.Build().Run();
+//
+//     return 0;
+// }
+// catch (Exception ex)
+// {
+//     Log.Fatal(ex, "Program terminated unexpectedly ({ApplicationContext})!", Program.AppName);
+//     return 1;
+// }
+// finally
+// {
+//     Log.CloseAndFlush();
+// }
+
+// IHostBuilder BuildWebHost(IConfiguration configuration, string[] args)
+// {
+//     return Host.CreateDefaultBuilder(args)
+//         .UseServiceProviderFactory(new AutofacServiceProviderFactory())
+//         .ConfigureWebHostDefaults(webBuilder =>
+//         {
+//             webBuilder
+//                 // .CaptureStartupErrors(false)
+//                 // .ConfigureKestrel(options =>
+//                 // {
+//                 //     var ports = GetDefinedPorts(configuration);
+//                 //     options.Listen(IPAddress.Any, ports.httpPort, listenOptions =>
+//                 //     {
+//                 //         listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
+//                 //     });
+//                 //
+//                 //     options.Listen(IPAddress.Any, ports.grpcPort, listenOptions =>
+//                 //     {
+//                 //         listenOptions.Protocols = HttpProtocols.Http2;
+//                 //     });
+//                 //
+//                 // })
+//                 // .ConfigureAppConfiguration(x => x.AddConfiguration(configuration))
+//                 .UseStartup<Startup>();
+//             //.UseSerilog();
+//         });
+// }
+
 
 Serilog.ILogger CreateSerilogLogger(IConfiguration configuration)
 {
@@ -108,16 +132,8 @@ IConfiguration GetConfiguration()
     return builder.Build();
 }
 
-(int httpPort, int grpcPort) GetDefinedPorts(IConfiguration config)
-{
-    var grpcPort = config.GetValue("GRPC_PORT", 5001);
-    var port = config.GetValue("PORT", 80);
-    return (port, grpcPort);
-}
-
 public partial class Program
 {
-
     public static string Namespace = typeof(Startup).Namespace;
     public static string AppName = Namespace.Substring(Namespace.LastIndexOf('.', Namespace.LastIndexOf('.') - 1) + 1);
 }

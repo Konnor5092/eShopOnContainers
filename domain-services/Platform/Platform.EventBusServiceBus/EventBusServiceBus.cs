@@ -28,7 +28,7 @@ public class EventBusServiceBus : IEventBus, IDisposable
     {
         _serviceBusPersisterConnection = serviceBusPersisterConnection;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _subsManager = null; //subsManager ?? new InMemoryEventBusSubscriptionsManager();
+        _subsManager = subsManager ?? new InMemoryEventBusSubscriptionsManager();
         _autofac = autofac;
         _subscriptionName = subscriptionClientName;
         _sender = _serviceBusPersisterConnection.TopicClient.CreateSender(_topicName);
